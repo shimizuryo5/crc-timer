@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CRC業務記録">
+<meta name="theme-color" content="#0f766e">
+<meta name="format-detection" content="telephone=no">
+<title>CRC業務記録</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pri:#0f766e; --pri-d:#115e59; --pri-l:#ccfbf1;
+  --run:#ea580c; --run-l:#fff7ed;
+  --bg:#f3f5f6; --card:#fff; --txt:#1f2937; --sub:#6b7280; --line:#e5e7eb;
+  --danger:#dc2626; --warn-bg:#fef3c7; --warn-txt:#92400e;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  background:var(--bg); color:var(--txt); font-size:16px; line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+header.top{
+  position:sticky; top:0; z-index:10; background:var(--pri); color:#fff;
+  padding:calc(10px + var(--safe-t)) 16px 10px; display:flex; justify-content:space-between; align-items:baseline;
+}
+header.top .title{font-weight:700;font-size:18px}
+header.top .sub{font-size:13px;opacity:.9}
+main{padding:12px 12px calc(84px + var(--safe-b));max-width:640px;margin:0 auto}
+.view{display:none}
+.view.active{display:block}
+h2{font-size:15px;color:var(--sub);margin:18px 4px 8px;font-weight:700}
+h2:first-child{margin-top:4px}
+.card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.06);margin-bottom:10px}
+.muted{color:var(--sub);font-size:14px}
+.small{font-size:13px}
+.center{text-align:center}
+button{font-family:inherit;font-size:16px;cursor:pointer}
+.btn{display:block;width:100%;border:none;border-radius:12px;padding:14px;font-weight:700}
+.btn.primary{background:var(--pri);color:#fff}
+.btn.primary:disabled{background:#9ca3af}
+.btn.secondary{background:#fff;color:var(--pri);border:2px solid var(--pri)}
+.btn.ghost{background:#eef2f3;color:var(--txt);font-weight:500}
+.btn.danger{background:#fff;color:var(--danger);border:2px solid var(--danger)}
+.btn + .btn{margin-top:10px}
+.row{display:flex;gap:8px;align-items:center}
+.row > *{flex:1}
+.link{background:none;border:none;color:var(--pri);padding:2px 4px;font-size:14px;text-decoration:underline}
+
+/* task grid */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.task-btn{
+  border:2px solid var(--line);background:#fff;border-radius:14px;min-height:64px;padding:10px 8px;
+  font-weight:700;font-size:16px;color:var(--txt);position:relative;word-break:break-all
+}
+.task-btn.selected{border-color:var(--pri);background:var(--pri-l);color:var(--pri-d)}
+.task-btn.running{border-color:var(--run);background:var(--run-l);color:var(--run)}
+.task-btn .tag{display:block;font-size:11px;font-weight:500;margin-top:2px}
+.start-wrap{margin-top:12px}
+.start-wrap.sticky{position:sticky;bottom:calc(72px + var(--safe-b));z-index:5}
+.start-wrap .btn{font-size:20px;padding:16px;box-shadow:0 4px 12px rgba(15,118,110,.25)}
+
+/* running */
+.run-card{background:#fff;border-left:6px solid var(--run);border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.run-top{display:flex;align-items:center;gap:10px}
+.run-info{flex:1;min-width:0}
+.run-name{font-weight:700;font-size:17px}
+.run-meta{font-size:13px;color:var(--sub)}
+.run-el{font-variant-numeric:tabular-nums;font-size:22px;font-weight:700;color:var(--run);min-width:104px;text-align:right}
+.stop-btn{background:var(--run);color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:700}
+.warn{background:var(--warn-bg);color:var(--warn-txt);border-radius:10px;padding:8px 10px;font-size:14px;margin-top:8px}
+.banner{background:var(--warn-bg);color:var(--warn-txt);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:10px}
+.banner.info{background:#e0f2fe;color:#075985}
+.empty{color:var(--sub);text-align:center;padding:14px;font-size:14px}
+
+/* records */
+.datebar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.datebar button{border:none;background:#fff;border-radius:10px;width:48px;height:44px;font-size:20px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.datebar input{flex:1}
+.rec{display:flex;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.rec:last-child{border-bottom:none}
+.rec-time{font-variant-numeric:tabular-nums;font-size:14px;color:var(--sub);width:96px;flex-shrink:0}
+.rec-main{flex:1;min-width:0}
+.rec-name{font-weight:700}
+.rec-memo{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-dur{font-weight:700;white-space:nowrap}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:middle;font-weight:500}
+.b-manual{background:#ede9fe;color:#5b21b6}
+.b-edit{background:#e0f2fe;color:#075985}
+.b-run{background:var(--run-l);color:var(--run);border:1px solid var(--run)}
+.b-hidden{background:#f3f4f6;color:var(--sub)}
+.b-sent{background:#dcfce7;color:#166534}
+.total-line{display:flex;justify-content:space-between;font-weight:700;padding:4px}
+
+/* summary */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:14px}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.kpi .k{font-size:12px;color:var(--sub)}
+.kpi .v{font-size:20px;font-weight:700}
+.bar-row{margin:10px 0}
+.bar-head{display:flex;justify-content:space-between;font-size:14px}
+.bar-head b{font-weight:700}
+.bar{height:10px;background:#eef2f3;border-radius:6px;overflow:hidden;margin-top:4px}
+.bar > i{display:block;height:100%;background:var(--pri);border-radius:6px}
+table.days{width:100%;border-collapse:collapse;font-size:14px}
+table.days td{padding:6px 4px;border-bottom:1px solid var(--line)}
+table.days td:last-child{text-align:right;font-weight:700}
+
+/* forms */
+label.f{display:block;font-size:14px;color:var(--sub);margin:12px 0 4px}
+input[type=text],input[type=email],input[type=number],input[type=date],input[type=time],select,textarea{
+  width:100%;font-family:inherit;font-size:16px;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:var(--txt);
+  -webkit-appearance:none;appearance:none;min-height:46px
+}
+select{background-image:linear-gradient(45deg,transparent 50%,#6b7280 50%),linear-gradient(135deg,#6b7280 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+textarea{min-height:70px;resize:vertical}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.quick button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:14px}
+.note{font-size:12px;color:var(--danger);margin-top:4px}
+.preview{background:#f0fdfa;color:var(--pri-d);border-radius:10px;padding:8px 10px;margin-top:12px;font-weight:700;font-size:15px}
+.preview.err{background:#fef2f2;color:var(--danger)}
+.radio-list label{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:15px}
+.radio-list label:last-child{border-bottom:none}
+.radio-list input{width:20px;height:20px;accent-color:var(--pri)}
+
+/* settings task list */
+.task-row{display:flex;align-items:center;gap:6px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.task-row:last-child{border-bottom:none}
+.task-row .nm{flex:1;font-weight:500;min-width:0;word-break:break-all}
+.task-row button{border:1px solid var(--line);background:#fff;border-radius:8px;min-width:40px;height:38px;font-size:15px}
+.task-row button:disabled{opacity:.35}
+
+/* tabs */
+nav.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;background:#fff;border-top:1px solid var(--line);
+  display:flex;padding-bottom:var(--safe-b)
+}
+nav.tabs button{flex:1;border:none;background:none;padding:8px 0 8px;font-size:11px;color:var(--sub);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button .ic{font-size:20px;line-height:1.1}
+nav.tabs button.on{color:var(--pri);font-weight:700}
+nav.tabs .dot{position:absolute;margin-left:18px;margin-top:-2px;background:var(--run);color:#fff;border-radius:999px;font-size:10px;min-width:16px;height:16px;line-height:16px;padding:0 4px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal.hidden{display:none}
+.sheet{background:#fff;width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + var(--safe-b))}
+.sheet h3{margin:0 0 6px;font-size:18px}
+.sheet .actions{margin-top:18px}
+
+/* toast */
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--safe-b));background:#111827;color:#fff;border-radius:12px;padding:12px 14px;z-index:60;display:flex;gap:12px;align-items:center;max-width:92%;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast.hidden{display:none}
+.toast button{background:none;border:none;color:#5eead4;font-weight:700;font-size:14px;white-space:nowrap}
+.ver{font-size:12px;color:var(--sub);text-align:center;margin-top:16px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="title">CRC業務記録</div>
+  <div class="sub" id="hdrSub"></div>
+</header>
+
+<main>
+  <section class="view" id="view-timer"></section>
+  <section class="view" id="view-records"></section>
+  <section class="view" id="view-summary"></section>
+  <section class="view" id="view-send"></section>
+  <section class="view" id="view-settings"></section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="timer"><span class="ic">⏱</span>計測</button>
+  <button data-tab="records"><span class="ic">📋</span>記録</button>
+  <button data-tab="summary"><span class="ic">📊</span>集計</button>
+  <button data-tab="send"><span class="ic">✉️</span>送信</button>
+  <button data-tab="settings"><span class="ic">⚙️</span>設定</button>
+</nav>
+
+<div class="modal hidden" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast hidden" id="toast"><span id="toastMsg"></span><button id="toastAct"></button></div>
+<input type="file" id="importFile" accept=".json,application/json" style="display:none">
+
+<script>
+'use strict';
+/* =========================================================
+   CRC業務記録  —  データはこのiPhone内（localStorage）にのみ保存
+   ========================================================= */
+const APP_VERSION = '1.0.0';
+const KEY = 'crcWorkTimer.v1';
+const DEFAULT_TASKS = ['患者対応','採血','検体処理','メール対応','EDC入力','SAE対応','調剤業務','投与管理'];
+const WD = ['日','月','火','水','木','金','土'];
+const LONG_RUN_MIN = 180;      // これ以上計測中なら「終了し忘れ」を警告（分）
+const SEND_REMIND_DAYS = 7;    // 前回送信からこの日数を超えたら送信を促す
+const PHI_NOTE = '※患者氏名・ID・生年月日など個人を特定できる情報は入力しないでください';
+
+/* ---------- 保存・読み込み ---------- */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function newState(){
+  return {
+    version: 1,
+    settings: { name: '', email: '' },
+    tasks: DEFAULT_TASKS.map((n, i) => ({ id: 't' + (i + 1), name: n, hidden: false })),
+    records: [],
+    lastSentAt: null
+  };
+}
+function normalize(s){
+  const d = newState();
+  if (!s || typeof s !== 'object') return d;
+  s.settings = Object.assign(d.settings, s.settings || {});
+  if (!Array.isArray(s.tasks) || !s.tasks.length) s.tasks = d.tasks;
+  if (!Array.isArray(s.records)) s.records = [];
+  if (!('lastSentAt' in s)) s.lastSentAt = null;
+  s.version = 1;
+  return s;
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) return normalize(JSON.parse(raw));
+  } catch (e) { console.error(e); }
+  return newState();
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch (e) {
+    alert('データの保存に失敗しました。iPhoneの空き容量やSafariの設定（プライベートブラウズ等）をご確認ください。');
+    return false;
+  }
+}
+let S = load();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+/* ---------- 日付・時間の補助 ---------- */
+const pad = n => String(n).padStart(2, '0');
+function ymd(t){ const d = new Date(t); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function parseYmd(s){ const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function today(){ return ymd(Date.now()); }
+function addDays(s, n){ const d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d); }
+function hm(t){ const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function atTime(dateStr, timeStr){
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, mi] = timeStr.split(':').map(Number);
+  return new Date(y, m - 1, d, h, mi).getTime();
+}
+function dateLabel(s){ const d = parseYmd(s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`; }
+function fullDate(s){ const d = parseYmd(s); return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`; }
+function fmtDur(min){
+  if (min == null || isNaN(min)) return '-';
+  const t = Math.round(min);
+  if (t < 1) return '1分未満';
+  const h = Math.floor(t / 60), m = t % 60;
+  return h ? (m ? `${h}時間${m}分` : `${h}時間`) : `${m}分`;
+}
+function fmtClock(ms){
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}`;
+}
+function fmtDateTime(t){ const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${hm(t)}`; }
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+/* ---------- 記録の補助 ---------- */
+const isRunning = r => !r.manual && r.end == null;
+function durMin(r){
+  if (r.manual) return Number(r.durationMin) || 0;
+  return ((r.end ?? Date.now()) - r.start) / 60000;
+}
+function taskById(id){ return S.tasks.find(t => t.id === id); }
+function recName(r){ const t = taskById(r.taskId); return t ? t.name : (r.taskName || '（削除された業務）'); }
+function sortKey(r){ return r.start != null ? r.start : parseYmd(r.date).getTime() + 86399000; }
+function running(){ return S.records.filter(isRunning).sort((a, b) => a.start - b.start); }
+function recordsIn(from, to){ return S.records.filter(r => !isRunning(r) && r.date >= from && r.date <= to); }
+function sumMin(list){ return list.reduce((a, r) => a + durMin(r), 0); }
+function visibleTasks(){ return S.tasks.filter(t => !t.hidden); }
+
+/* ---------- 期間 ---------- */
+function periodRange(p, from, to){
+  const t = today(), now = new Date();
+  switch (p) {
+    case 'today': return [t, t];
+    case 'week': { const dow = (now.getDay() + 6) % 7; const mon = addDays(t, -dow); return [mon, addDays(mon, 6)]; }
+    case 'month': return [ymd(new Date(now.getFullYear(), now.getMonth(), 1)), ymd(new Date(now.getFullYear(), now.getMonth() + 1, 0))];
+    case 'lastmonth': return [ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)), ymd(new Date(now.getFullYear(), now.getMonth(), 0))];
+    case 'custom': { let f = from || t, e = to || t; if (f > e) [f, e] = [e, f]; return [f, e]; }
+    case 'all': default: return ['0000-01-01', '9999-12-31'];
+  }
+}
+function rangeText(f, e){
+  if (f === '0000-01-01') return '全期間';
+  return f === e ? fullDate(f) : `${fullDate(f)} 〜 ${fullDate(e)}`;
+}
+
+/* ---------- 画面の状態 ---------- */
+const ui = {
+  tab: 'timer', selected: new Set(),
+  recDate: today(),
+  sumPeriod: 'today', sumFrom: today(), sumTo: today(),
+  sendPeriod: 'unsent', sendFrom: addDays(today(), -6), sendTo: today()
+};
+
+/* ---------- トースト（画面下の短いお知らせ） ---------- */
+let toastTimer = null;
+function toast(msg, actLabel, actFn){
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  const b = document.getElementById('toastAct');
+  if (actLabel) { b.textContent = actLabel; b.style.display = ''; b.onclick = () => { hideToast(); actFn(); }; }
+  else { b.style.display = 'none'; b.onclick = null; }
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, actLabel ? 6000 : 2500);
+}
+function hideToast(){ document.getElementById('toast').classList.add('hidden'); }
+
+/* ---------- シート（下から出る入力画面） ---------- */
+function openSheet(html, mount){
+  const sh = document.getElementById('sheet');
+  sh.innerHTML = html;
+  document.getElementById('modal').classList.remove('hidden');
+  sh.scrollTop = 0;
+  if (mount) mount(sh);
+}
+function closeSheet(){ document.getElementById('modal').classList.add('hidden'); document.getElementById('sheet').innerHTML = ''; }
+function sheetOpen(){ return !document.getElementById('modal').classList.contains('hidden'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeSheet(); });
+
+/* =========================================================
+   計測
+   ========================================================= */
+function startSelected(){
+  const ids = [...ui.selected];
+  if (!ids.length) return;
+  const now = Date.now();
+  const names = [];
+  ids.forEach(id => {
+    if (S.records.some(r => isRunning(r) && r.taskId === id)) return;
+    const t = taskById(id); if (!t) return;
+    S.records.push({ id: uid(), taskId: id, taskName: t.name, start: now, end: null, date: ymd(now),
+      manual: false, durationMin: null, edited: false, memo: '', sentAt: null, created: now, updated: now });
+    names.push(t.name);
+  });
+  ui.selected.clear();
+  save(); render();
+  if (names.length) toast(`「${names.join('」「')}」を開始しました`);
+}
+function stopRecord(id, endMs){
+  const r = S.records.find(x => x.id === id); if (!r || !isRunning(r)) return;
+  const prevEdited = r.edited;
+  r.end = endMs != null ? endMs : Date.now();
+  if (endMs != null) r.edited = true;
+  r.updated = Date.now(); r.sentAt = null;
+  save(); render();
+  toast(`「${recName(r)}」を終了（${fmtDur(durMin(r))}）`, '元に戻す', () => {
+    r.end = null; r.edited = prevEdited; r.updated = Date.now(); save(); render(); toast('計測を再開しました');
+  });
+}
+function onStop(id){
+  const r = S.records.find(x => x.id === id); if (!r) return;
+  const el = (Date.now() - r.start) / 60000;
+  if (el >= LONG_RUN_MIN || ymd(r.start) !== today()) openLongStop(r);
+  else stopRecord(id);
+}
+function openLongStop(r){
+  const nowD = today(), nowT = hm(Date.now());
+  openSheet(`
+    <h3>終了時刻の確認</h3>
+    <div class="muted">「${esc(recName(r))}」は ${fmtDateTime(r.start)} の開始から <b>${fmtDur(durMin(r))}</b> 経過しています。終了し忘れていた場合は、実際の終了時刻を入力してください。</div>
+    <label class="f">終了日</label><input type="date" id="ls-d" value="${nowD}">
+    <label class="f">終了時刻</label><input type="time" id="ls-t" value="${nowT}">
+    <div class="preview" id="ls-pv"></div>
+    <div class="actions">
+      <button class="btn primary" id="ls-ok">この時刻で終了</button>
+      <button class="btn ghost" id="ls-now">今の時刻で終了</button>
+      <button class="btn ghost" id="ls-cancel">キャンセル（計測を続ける）</button>
+    </div>`, sh => {
+    const pv = () => {
+      const d = sh.querySelector('#ls-d').value, t = sh.querySelector('#ls-t').value, p = sh.querySelector('#ls-pv');
+      if (!d || !t) { p.className = 'preview err'; p.textContent = '日付と時刻を入力してください'; return null; }
+      const e = atTime(d, t);
+      if (e <= r.start) { p.className = 'preview err'; p.textContent = '開始時刻より後にしてください'; return null; }
+      if (e > Date.now() + 60000) { p.className = 'preview err'; p.textContent = '未来の時刻は指定できません'; return null; }
+      p.className = 'preview'; p.textContent = `所要時間：${fmtDur((e - r.start) / 60000)}`; return e;
+    };
+    sh.querySelector('#ls-d').oninput = pv; sh.querySelector('#ls-t').oninput = pv; pv();
+    sh.querySelector('#ls-ok').onclick = () => { const e = pv(); if (e == null) return; closeSheet(); stopRecord(r.id, Math.min(e, Date.now())); };
+    sh.querySelector('#ls-now').onclick = () => { closeSheet(); stopRecord(r.id); };
+    sh.querySelector('#ls-cancel').onclick = closeSheet;
+  });
+}
+
+function renderTimer(){
+  const v = document.getElementById('view-timer');
+  const run = running();
+  const runIds = new Set(run.map(r => r.taskId));
+  let h = banners();
+
+  h += `<h2>計測中（${run.length}件）</h2>`;
+  if (!run.length) h += `<div class="card empty">計測中の業務はありません</div>`;
+  run.forEach(r => {
+    const el = (Date.now() - r.start) / 60000;
+    const long = el >= LONG_RUN_MIN || ymd(r.start) !== today();
+    h += `<div class="run-card">
+      <div class="run-top">
+        <div class="run-info">
+          <div class="run-name">${esc(recName(r))}</div>
+          <div class="run-meta">開始 ${ymd(r.start) === today() ? hm(r.start) : fmtDateTime(r.start)}
+            <button class="link" data-act="edit" data-id="${r.id}">修正</button></div>
+        </div>
+        <div class="run-el" data-start="${r.start}">${fmtClock(Date.now() - r.start)}</div>
+      </div>
+      <button class="btn stop-btn" style="margin-top:10px" data-act="stop" data-id="${r.id}">終了</button>
+      ${long ? `<div class="warn">長時間計測中です。終了し忘れていませんか？（終了時に実際の時刻を入力できます）</div>` : ''}
+    </div>`;
+  });
+
+  h += `<h2>業務を選んで「開始」</h2>`;
+  const vt = visibleTasks();
+  if (!vt.length) h += `<div class="card empty">業務がありません。「設定」から追加してください。</div>`;
+  h += `<div class="grid">`;
+  vt.forEach(t => {
+    const isRun = runIds.has(t.id), sel = ui.selected.has(t.id);
+    h += `<button class="task-btn ${isRun ? 'running' : ''} ${sel ? 'selected' : ''}" data-act="pick" data-id="${t.id}">
+      ${esc(t.name)}${isRun ? '<span class="tag">計測中</span>' : (sel ? '<span class="tag">選択中</span>' : '')}</button>`;
+  });
+  h += `</div>`;
+  h += `<div class="muted small" style="margin:8px 4px">複数選んで同時に開始することもできます。計測中の業務は上の「終了」で止めます。</div>`;
+  h += `<div class="start-wrap ${ui.selected.size ? 'sticky' : ''}"><button class="btn primary" data-act="start" ${ui.selected.size ? '' : 'disabled'}>
+        ${ui.selected.size ? `開始（${ui.selected.size}件）` : '業務を選んでください'}</button></div>`;
+  h += `<button class="btn secondary" style="margin-top:14px" data-act="manual">＋ 測り忘れを後から入力</button>`;
+
+  const tr = recordsIn(today(), today());
+  h += `<div class="card" style="margin-top:14px"><div class="total-line"><span>本日の記録（終了分）</span><span>${tr.length}件・${fmtDur(sumMin(tr))}</span></div>
+        <div class="center"><button class="link" data-act="goto" data-tab="records">記録を見る・修正する</button></div></div>`;
+  v.innerHTML = h;
+}
+
+function banners(){
+  let h = '';
+  const standalone = window.navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (isIOS && !standalone) {
+    h += `<div class="banner info"><b>ホーム画面に追加してお使いください。</b><br>
+      Safari下部の共有ボタン（□↑）→「ホーム画面に追加」。ホーム画面のアイコンから開くと記録が安定して保存されます。
+      ※Safariで開いた場合とホーム画面から開いた場合で、記録は別々に保存されます。</div>`;
+  }
+  const unsent = S.records.filter(r => !isRunning(r) && !r.sentAt);
+  if (unsent.length) {
+    const base = S.lastSentAt || Math.min(...unsent.map(r => r.created || Date.now()));
+    const days = Math.floor((Date.now() - base) / 86400000);
+    if (days >= SEND_REMIND_DAYS) {
+      h += `<div class="banner">${S.lastSentAt ? `前回の送信から${days}日経っています。` : `まだ一度も送信していません。`}
+        未送信の記録が${unsent.length}件あります。<button class="link" data-act="goto" data-tab="send">送信する</button></div>`;
+    }
+  }
+  return h;
+}
+
+/* =========================================================
+   後から入力（測り忘れ）・記録の修正
+   ========================================================= */
+function taskOptions(selectedId){
+  let opts = visibleTasks().slice();
+  const cur = taskById(selectedId);
+  if (cur && cur.hidden) opts.push(cur);
+  return `<option value="">業務を選択</option>` + opts.map(t =>
+    `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${esc(t.name)}${t.hidden ? '（非表示中）' : ''}</option>`).join('');
+}
+const QUICK = [5, 10, 15, 20, 30, 45, 60, 90, 120];
+
+function openManual(dateStr, r){
+  const isEdit = !!r;
+  const d = r ? r.date : (dateStr || today());
+  openSheet(`
+    <h3>${isEdit ? '後入力した記録の修正' : '測り忘れを後から入力'}</h3>
+    <div class="muted small">おおよその時間で構いません。「後入力」として実測と区別して記録されます。</div>
+    <label class="f">業務</label><select id="m-task">${taskOptions(r ? r.taskId : '')}</select>
+    <label class="f">日付</label><input type="date" id="m-date" value="${d}" max="${today()}">
+    <label class="f">所要時間（分）</label><input type="number" id="m-dur" inputmode="numeric" min="1" max="1440" step="1" value="${r ? Math.round(r.durationMin) : ''}" placeholder="例：15">
+    <div class="quick">${QUICK.map(q => `<button type="button" data-q="${q}">${q < 60 ? q + '分' : (q / 60) + '時間'}</button>`).join('')}</div>
+    <label class="f">おおよその開始時刻（わかれば）</label><input type="time" id="m-start" value="${r && r.start != null ? hm(r.start) : ''}">
+    <label class="f">メモ（任意）</label><textarea id="m-memo" maxlength="200">${esc(r ? r.memo : '')}</textarea>
+    <div class="note">${PHI_NOTE}</div>
+    <div class="preview" id="m-pv"></div>
+    <div class="actions">
+      <button class="btn primary" id="m-ok">${isEdit ? '保存' : '記録する'}</button>
+      ${isEdit ? '<button class="btn danger" id="m-del">この記録を削除</button>' : ''}
+      <button class="btn ghost" id="m-cancel">キャンセル</button>
+    </div>`, sh => {
+    const $ = s => sh.querySelector(s);
+    const pv = () => {
+      const p = $('#m-pv'), dur = Number($('#m-dur').value);
+      if (!$('#m-task').value) { p.className = 'preview err'; p.textContent = '業務を選択してください'; return false; }
+      if (!$('#m-date').value) { p.className = 'preview err'; p.textContent = '日付を入力してください'; return false; }
+      if ($('#m-date').value > today()) { p.className = 'preview err'; p.textContent = '未来の日付は入力できません'; return false; }
+      if (!(dur > 0 && dur <= 1440)) { p.className = 'preview err'; p.textContent = '所要時間を1〜1440分で入力してください'; return false; }
+      p.className = 'preview';
+      const st = $('#m-start').value;
+      p.textContent = `${dateLabel($('#m-date').value)}　${st ? st + '〜　' : ''}${fmtDur(dur)}`;
+      return true;
+    };
+    sh.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { $('#m-dur').value = b.dataset.q; pv(); });
+    ['#m-task', '#m-date', '#m-dur', '#m-start'].forEach(s => $(s).addEventListener('input', pv));
+    $('#m-task').addEventListener('change', pv);
+    pv();
+    $('#m-ok').onclick = () => {
+      if (!pv()) return;
+      const dur = Math.round(Number($('#m-dur').value)), date = $('#m-date').value, st = $('#m-start').value;
+      const start = st ? atTime(date, st) : null;
+      const tid = $('#m-task').value, t = taskById(tid), now = Date.now();
+      if (isEdit) {
+        const changed = r.taskId !== tid || r.date !== date || r.durationMin !== dur || r.start !== start;
+        Object.assign(r, { taskId: tid, taskName: t.name, date, durationMin: dur, start, end: start != null ? start + dur * 60000 : null,
+          memo: $('#m-memo').value.trim(), updated: now, sentAt: null });
+        if (changed) r.edited = true;
+      } else {
+        S.records.push({ id: uid(), taskId: tid, taskName: t.name, start, end: start != null ? start + dur * 60000 : null, date,
+          manual: true, durationMin: dur, edited: false, memo: $('#m-memo').value.trim(), sentAt: null, created: now, updated: now });
+      }
+      save(); closeSheet(); render();
+      toast(isEdit ? '保存しました' : `「${t.name}」${fmtDur(dur)}を記録しました`);
+    };
+    if (isEdit) $('#m-del').onclick = () => deleteRecord(r);
+    $('#m-cancel').onclick = closeSheet;
+  });
+}
+
+function openEdit(id){
+  const r = S.records.find(x => x.id === id); if (!r) return;
+  if (r.manual) return openManual(null, r);
+  const run = isRunning(r);
+  openSheet(`
+    <h3>${run ? '計測中の記録の修正' : '記録の修正'}</h3>
+    <label class="f">業務</label><select id="e-task">${taskOptions(r.taskId)}</select>
+    <label class="f">開始日</label><input type="date" id="e-date" value="${ymd(r.start)}" max="${today()}">
+    <div class="row">
+      <div><label class="f">開始時刻</label><input type="time" id="e-start" value="${hm(r.start)}"></div>
+      ${run ? '' : `<div><label class="f">終了時刻</label><input type="time" id="e-end" value="${hm(r.end)}"></div>`}
+    </div>
+    ${run ? '' : '<div class="muted small" style="margin-top:4px">終了時刻が開始時刻より前の場合は、翌日の時刻として扱います。</div>'}
+    <label class="f">メモ（任意）</label><textarea id="e-memo" maxlength="200">${esc(r.memo)}</textarea>
+    <div class="note">${PHI_NOTE}</div>
+    <div class="preview" id="e-pv"></div>
+    <div class="actions">
+      <button class="btn primary" id="e-ok">保存</button>
+      <button class="btn danger" id="e-del">この記録を削除</button>
+      <button class="btn ghost" id="e-cancel">キャンセル</button>
+    </div>`, sh => {
+    const $ = s => sh.querySelector(s);
+    const calc = () => {
+      const p = $('#e-pv');
+      if (!$('#e-task').value) { p.className = 'preview err'; p.textContent = '業務を選択してください'; return null; }
+      const d = $('#e-date').value, s = $('#e-start').value;
+      if (!d || !s) { p.className = 'preview err'; p.textContent = '日付と開始時刻を入力してください'; return null; }
+      // 日付・時刻を変えていない場合は元の値（秒まで）をそのまま使う
+      const st = (d === ymd(r.start) && s === hm(r.start)) ? r.start : atTime(d, s);
+      if (st > Date.now()) { p.className = 'preview err'; p.textContent = '開始時刻が未来になっています'; return null; }
+      if (run) { p.className = 'preview'; p.textContent = `現在までの経過：${fmtDur((Date.now() - st) / 60000)}`; return { st, en: null }; }
+      const e = $('#e-end').value;
+      if (!e) { p.className = 'preview err'; p.textContent = '終了時刻を入力してください'; return null; }
+      let en;
+      if (r.end != null && st === r.start && e === hm(r.end)) en = r.end;
+      else { en = atTime(d, e); if (en < st) en += 86400000; }
+      if (en > Date.now() + 60000) { p.className = 'preview err'; p.textContent = '終了時刻が未来になっています'; return null; }
+      p.className = 'preview';
+      p.textContent = `${hm(st)}〜${ymd(en) !== d ? '翌' : ''}${hm(en)}　所要時間：${fmtDur((en - st) / 60000)}`;
+      return { st, en };
+    };
+    ['#e-task', '#e-date', '#e-start', '#e-end'].forEach(s => { const el = $(s); if (el) { el.addEventListener('input', calc); el.addEventListener('change', calc); } });
+    calc();
+    $('#e-ok').onclick = () => {
+      const c = calc(); if (!c) return;
+      const tid = $('#e-task').value;
+      const changed = r.taskId !== tid || r.start !== c.st || (!run && r.end !== c.en);
+      Object.assign(r, { taskId: tid, taskName: taskById(tid).name, start: c.st, date: ymd(c.st), memo: $('#e-memo').value.trim(),
+        updated: Date.now(), sentAt: null });
+      if (!run) r.end = c.en;
+      if (changed) r.edited = true;
+      save(); closeSheet(); render(); toast('保存しました');
+    };
+    $('#e-del').onclick = () => deleteRecord(r);
+    $('#e-cancel').onclick = closeSheet;
+  });
+}
+function deleteRecord(r){
+  if (!confirm(`「${recName(r)}」の記録を削除しますか？`)) return;
+  const idx = S.records.indexOf(r);
+  S.records.splice(idx, 1);
+  save(); closeSheet(); render();
+  toast('削除しました', '元に戻す', () => { S.records.splice(Math.min(idx, S.records.length), 0, r); save(); render(); toast('元に戻しました'); });
+}
+
+/* =========================================================
+   記録一覧
+   ========================================================= */
+function renderRecords(){
+  const v = document.getElementById('view-records');
+  const d = ui.recDate;
+  const list = S.records.filter(r => r.date === d).sort((a, b) => sortKey(a) - sortKey(b));
+  const done = list.filter(r => !isRunning(r));
+  let h = `<div class="datebar">
+      <button data-act="day" data-n="-1" aria-label="前の日">‹</button>
+      <input type="date" id="recDate" value="${d}">
+      <button data-act="day" data-n="1" aria-label="次の日" ${d >= today() ? 'disabled style="opacity:.3"' : ''}>›</button>
+    </div>
+    <div class="card"><div class="total-line"><span>${fullDate(d)}</span><span>${done.length}件・${fmtDur(sumMin(done))}</span></div></div>`;
+  h += `<div class="card">`;
+  if (!list.length) h += `<div class="empty">この日の記録はありません</div>`;
+  list.forEach(r => {
+    const run = isRunning(r);
+    let time;
+    if (r.start == null) time = '時刻なし';
+    else if (run) time = `${hm(r.start)}〜`;
+    else time = `${hm(r.start)}〜${ymd(r.end) !== r.date ? '翌' : ''}${hm(r.end)}`;
+    h += `<div class="rec" data-act="edit" data-id="${r.id}">
+      <div class="rec-time">${time}</div>
+      <div class="rec-main">
+        <div class="rec-name">${esc(recName(r))}${run ? '<span class="badge b-run">計測中</span>' : ''}${r.manual ? '<span class="badge b-manual">後入力</span>' : ''}${r.edited ? '<span class="badge b-edit">修正</span>' : ''}${r.sentAt ? '<span class="badge b-sent">送信済</span>' : ''}</div>
+        ${r.memo ? `<div class="rec-memo">${esc(r.memo)}</div>` : ''}
+      </div>
+      <div class="rec-dur">${run ? '計測中' : fmtDur(durMin(r))}</div>
+    </div>`;
+  });
+  h += `</div><div class="muted small" style="margin:0 4px 10px">記録をタップすると修正・削除できます。</div>`;
+  h += `<button class="btn secondary" data-act="manual" data-date="${d}">＋ この日に後から入力</button>`;
+  v.innerHTML = h;
+  v.querySelector('#recDate').onchange = e => { if (e.target.value) { ui.recDate = e.target.value > today() ? today() : e.target.value; render(); } };
+}
+
+/* =========================================================
+   集計
+   ========================================================= */
+const PERIODS = [['today', '今日'], ['week', '今週'], ['month', '今月'], ['lastmonth', '先月'], ['custom', '期間指定'], ['all', '全期間']];
+function renderSummary(){
+  const v = document.getElementById('view-summary');
+  const [f, e] = periodRange(ui.sumPeriod, ui.sumFrom, ui.sumTo);
+  const list = recordsIn(f, e);
+  const total = sumMin(list);
+  const days = new Set(list.map(r => r.date));
+  let h = `<div class="chips">${PERIODS.map(([k, l]) => `<button class="chip ${ui.sumPeriod === k ? 'on' : ''}" data-act="sumP" data-p="${k}">${l}</button>`).join('')}</div>`;
+  if (ui.sumPeriod === 'custom') {
+    h += `<div class="card"><div class="row"><div><label class="f" style="margin-top:0">開始日</label><input type="date" id="sumFrom" value="${ui.sumFrom}"></div>
+      <div><label class="f" style="margin-top:0">終了日</label><input type="date" id="sumTo" value="${ui.sumTo}"></div></div></div>`;
+  }
+  h += `<div class="muted small" style="margin:0 4px 8px">${rangeText(f, e)}</div>`;
+  h += `<div class="kpis">
+    <div class="kpi"><div class="k">合計時間</div><div class="v">${fmtDur(total)}</div></div>
+    <div class="kpi"><div class="k">記録件数</div><div class="v">${list.length}件</div></div>
+    <div class="kpi"><div class="k">記録した日数</div><div class="v">${days.size}日</div></div>
+    <div class="kpi"><div class="k">1日あたり平均</div><div class="v">${days.size ? fmtDur(total / days.size) : '-'}</div></div>
+  </div>`;
+
+  // 業務別
+  const by = {};
+  list.forEach(r => { const n = recName(r); (by[n] = by[n] || { min: 0, n: 0, manual: 0 }); by[n].min += durMin(r); by[n].n++; if (r.manual) by[n].manual++; });
+  const rows = Object.entries(by).sort((a, b) => b[1].min - a[1].min);
+  const max = rows.length ? rows[0][1].min : 0;
+  h += `<h2>業務別の時間</h2><div class="card">`;
+  if (!rows.length) h += `<div class="empty">この期間の記録はありません</div>`;
+  rows.forEach(([n, o]) => {
+    const pct = total ? Math.round(o.min / total * 100) : 0;
+    h += `<div class="bar-row"><div class="bar-head"><b>${esc(n)}</b><span>${fmtDur(o.min)}（${pct}%）・${o.n}件</span></div>
+      <div class="bar"><i style="width:${max ? Math.max(2, o.min / max * 100) : 0}%"></i></div></div>`;
+  });
+  h += `</div>`;
+
+  // 日別
+  if (days.size > 1) {
+    h += `<h2>日別の合計</h2><div class="card"><table class="days">`;
+    [...days].sort().reverse().forEach(d => {
+      const dl = list.filter(r => r.date === d);
+      h += `<tr><td>${dateLabel(d)}</td><td>${dl.length}件</td><td>${fmtDur(sumMin(dl))}</td></tr>`;
+    });
+    h += `</table></div>`;
+  }
+  h += `<div class="muted small" style="margin:8px 4px">※計測中の記録は含みません。複数の業務を同時に計測した場合、合計時間は実際の勤務時間より長くなることがあります。</div>`;
+  v.innerHTML = h;
+  const sf = v.querySelector('#sumFrom'), st = v.querySelector('#sumTo');
+  if (sf) { sf.onchange = () => { ui.sumFrom = sf.value || today(); render(); }; st.onchange = () => { ui.sumTo = st.value || today(); render(); }; }
+}
+
+/* =========================================================
+   送信（CSV）
+   ========================================================= */
+const SEND_PERIODS = [['unsent', 'まだ送信していない記録'], ['month', '今月'], ['lastmonth', '先月'], ['custom', '期間を指定'], ['all', '全期間']];
+function sendTargets(){
+  if (ui.sendPeriod === 'unsent') return S.records.filter(r => !isRunning(r) && !r.sentAt);
+  const [f, e] = periodRange(ui.sendPeriod, ui.sendFrom, ui.sendTo);
+  return recordsIn(f, e);
+}
+function csvCell(v){
+  let s = String(v ?? '').replace(/\r?\n/g, ' ');
+  if (/^[=+\-@\t]/.test(s)) s = "'" + s;           // Excelの数式として解釈されないように
+  return /[",]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function buildCSV(recs){
+  const head = ['記録ID', 'CRC名', '日付', '曜日', '業務', '開始時刻', '終了時刻', '所要時間(分)', '記録方法', '修正', 'メモ'];
+  const rows = recs.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : sortKey(a) - sortKey(b)).map(r => {
+    const d = parseYmd(r.date);
+    return [
+      r.id, S.settings.name, r.date.replace(/-/g, '/'), WD[d.getDay()], recName(r),
+      r.start != null ? hm(r.start) : '',
+      r.end != null ? (ymd(r.end) !== r.date ? '翌' : '') + hm(r.end) : '',
+      Math.round(durMin(r) * 10) / 10,
+      r.manual ? '後入力' : '計測', r.edited ? 'あり' : '', r.memo || ''
+    ];
+  });
+  return '﻿' + [head, ...rows].map(c => c.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+function safeFileName(s){ return String(s || '未設定').replace(/[\\/:*?"<>|\s]/g, '_').slice(0, 30); }
+function downloadFile(file){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+function markSent(recs){
+  const now = Date.now();
+  recs.forEach(r => r.sentAt = now);
+  S.lastSentAt = now; save(); render();
+}
+function shareCSV(){
+  const recs = sendTargets();
+  if (!recs.length) { toast('送信する記録がありません'); return; }
+  if (!S.settings.name) { alert('先に「設定」でCRC名を登録してください。'); return; }
+  const dates = recs.map(r => r.date).sort();
+  const f = dates[0].replace(/-/g, ''), e = dates[dates.length - 1].replace(/-/g, '');
+  const name = `CRC業務記録_${safeFileName(S.settings.name)}_${f === e ? f : f + '-' + e}.csv`;
+  const file = new File([buildCSV(recs)], name, { type: 'text/csv' });
+  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file] }).then(() => {
+      markSent(recs); toast(`${recs.length}件を送信済みにしました`);
+    }).catch(err => {
+      if (err && err.name === 'AbortError') toast('キャンセルしました');
+      else alert('共有画面を開けませんでした：' + (err && err.message ? err.message : err));
+    });
+  } else {
+    downloadFile(file);
+    setTimeout(() => { if (confirm('CSVファイルを保存しました。\nこの記録を「送信済み」にしますか？')) markSent(recs); }, 500);
+  }
+}
+function renderSend(){
+  const v = document.getElementById('view-send');
+  const recs = sendTargets();
+  const unsentN = S.records.filter(r => !isRunning(r) && !r.sentAt).length;
+  const runN = running().length;
+  let h = `<h2>送信先</h2><div class="card">`;
+  if (S.settings.email) {
+    h += `<div style="font-weight:700;word-break:break-all">${esc(S.settings.email)}</div>
+      <button class="btn ghost" style="margin-top:10px" data-act="copyMail">アドレスをコピー</button>`;
+  } else {
+    h += `<div class="muted">送信先が未登録です。<button class="link" data-act="goto" data-tab="settings">設定で登録</button></div>`;
+  }
+  h += `</div><h2>送る記録</h2><div class="card radio-list">`;
+  SEND_PERIODS.forEach(([k, l]) => {
+    h += `<label><input type="radio" name="sendP" value="${k}" ${ui.sendPeriod === k ? 'checked' : ''}>${l}${k === 'unsent' ? `（${unsentN}件）` : ''}</label>`;
+  });
+  if (ui.sendPeriod === 'custom') {
+    h += `<div class="row" style="padding-top:8px"><div><label class="f" style="margin-top:0">開始日</label><input type="date" id="sendFrom" value="${ui.sendFrom}"></div>
+      <div><label class="f" style="margin-top:0">終了日</label><input type="date" id="sendTo" value="${ui.sendTo}"></div></div>`;
+  }
+  h += `</div>`;
+  h += `<div class="card"><div class="total-line"><span>対象</span><span>${recs.length}件・${fmtDur(sumMin(recs))}</span></div>
+    ${runN ? `<div class="muted small" style="padding:0 4px">※計測中の${runN}件は終了後に送信対象になります。</div>` : ''}</div>`;
+  h += `<button class="btn primary" data-act="share" ${recs.length ? '' : 'disabled'}>CSVを作成してメールで送る</button>`;
+  h += `<div class="card" style="margin-top:12px"><div class="small">
+      <b>送り方</b><br>
+      ① 上のボタンを押す → ② 共有画面で「メール」を選ぶ → ③ 宛先に送信先アドレスを貼り付け（「アドレスをコピー」を使うと便利）→ ④ 送信<br>
+      <span class="muted">共有画面を開いた時点で「送信済み」になります。送信できなかった場合は「期間を指定」から送り直せます。</span></div></div>`;
+  h += `<div class="muted small center">前回の送信：${S.lastSentAt ? new Date(S.lastSentAt).toLocaleString('ja-JP') : 'まだありません'}</div>`;
+  v.innerHTML = h;
+  v.querySelectorAll('input[name=sendP]').forEach(i => i.onchange = () => { ui.sendPeriod = i.value; render(); });
+  const sf = v.querySelector('#sendFrom'), st = v.querySelector('#sendTo');
+  if (sf) { sf.onchange = () => { ui.sendFrom = sf.value || today(); render(); }; st.onchange = () => { ui.sendTo = st.value || today(); render(); }; }
+}
+function copyMail(){
+  const t = S.settings.email;
+  const ok = () => toast('アドレスをコピーしました');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok).catch(() => fallbackCopy(t, ok));
+  else fallbackCopy(t, ok);
+}
+function fallbackCopy(t, ok){
+  const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, t.length);
+  try { document.execCommand('copy'); ok(); } catch (e) { prompt('コピーしてください', t); }
+  ta.remove();
+}
+
+/* =========================================================
+   設定
+   ========================================================= */
+function renderSettings(){
+  const v = document.getElementById('view-settings');
+  let h = `<h2>利用者</h2><div class="card">
+    <label class="f" style="margin-top:0">CRC名（集計で個人を区別するための名前）</label>
+    <input type="text" id="s-name" value="${esc(S.settings.name)}" placeholder="例：山田" maxlength="30">
+    <label class="f">送信先メールアドレス</label>
+    <input type="email" id="s-mail" value="${esc(S.settings.email)}" placeholder="例：crc-office@example.jp" autocapitalize="off" autocorrect="off">
+    <button class="btn primary" style="margin-top:12px" data-act="saveSettings">保存</button></div>`;
+
+  h += `<h2>業務の一覧（${S.tasks.length}件）</h2><div class="card">`;
+  S.tasks.forEach((t, i) => {
+    h += `<div class="task-row"><div class="nm">${esc(t.name)}${t.hidden ? '<span class="badge b-hidden">非表示</span>' : ''}</div>
+      <button data-act="tUp" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="上へ">↑</button>
+      <button data-act="tDown" data-i="${i}" ${i === S.tasks.length - 1 ? 'disabled' : ''} aria-label="下へ">↓</button>
+      <button data-act="tEdit" data-id="${t.id}" style="min-width:56px">編集</button></div>`;
+  });
+  h += `<div class="row" style="margin-top:10px"><input type="text" id="t-new" placeholder="追加する業務名" maxlength="20" style="flex:3">
+      <button class="btn primary" style="flex:1;padding:12px" data-act="tAdd">追加</button></div></div>`;
+
+  h += `<h2>データの管理</h2><div class="card">
+    <div class="muted small">記録はこのiPhoneの中だけに保存されています。機種変更の前や念のための控えに、バックアップを書き出しておけます。</div>
+    <button class="btn ghost" style="margin-top:10px" data-act="backup">バックアップを書き出す</button>
+    <button class="btn ghost" data-act="restore">バックアップから復元する</button>
+    <button class="btn danger" data-act="wipe">すべての記録を削除する</button>
+    <div class="muted small" style="margin-top:8px">保存中の記録：${S.records.length}件</div></div>`;
+
+  h += `<h2>注意事項</h2><div class="card small">
+    ・${PHI_NOTE.replace('※', '')}。<br>
+    ・Safariの「履歴とWebサイトデータを消去」を行うと記録が消えます。定期的に送信してください。<br>
+    ・記録が外部のサーバーに自動送信されることはありません。</div>
+    <div class="ver">CRC業務記録 ver.${APP_VERSION}</div>`;
+  v.innerHTML = h;
+}
+function saveSettings(){
+  const n = document.getElementById('s-name').value.trim();
+  const m = document.getElementById('s-mail').value.trim();
+  if (!n) { alert('CRC名を入力してください。'); return; }
+  if (m && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) { alert('メールアドレスの形式を確認してください。'); return; }
+  S.settings.name = n; S.settings.email = m; save(); render(); toast('保存しました');
+}
+function addTask(){
+  const el = document.getElementById('t-new'); const n = el.value.trim();
+  if (!n) { toast('業務名を入力してください'); return; }
+  if (S.tasks.some(t => t.name === n)) { toast('同じ名前の業務があります'); return; }
+  S.tasks.push({ id: 't' + uid(), name: n, hidden: false }); save(); render(); toast(`「${n}」を追加しました`);
+}
+function moveTask(i, d){
+  const j = i + d; if (j < 0 || j >= S.tasks.length) return;
+  [S.tasks[i], S.tasks[j]] = [S.tasks[j], S.tasks[i]]; save(); render();
+}
+function openTaskEdit(id){
+  const t = taskById(id); if (!t) return;
+  const used = S.records.filter(r => r.taskId === id).length;
+  const isRun = S.records.some(r => isRunning(r) && r.taskId === id);
+  openSheet(`
+    <h3>業務の編集</h3>
+    <label class="f">業務名</label><input type="text" id="te-name" value="${esc(t.name)}" maxlength="20">
+    <div class="muted small" style="margin-top:4px">名前を変えると、過去の記録の業務名も変わります。</div>
+    <div class="actions">
+      <button class="btn primary" id="te-ok">保存</button>
+      <button class="btn ghost" id="te-hide">${t.hidden ? '計測画面に表示する' : '計測画面に表示しない（非表示）'}</button>
+      <button class="btn danger" id="te-del">この業務を削除</button>
+      <button class="btn ghost" id="te-cancel">キャンセル</button>
+    </div>
+    <div class="muted small" style="margin-top:8px">この業務の記録：${used}件${used ? '（記録がある業務は削除できません。使わない場合は「非表示」にしてください）' : ''}</div>`, sh => {
+    const $ = s => sh.querySelector(s);
+    $('#te-ok').onclick = () => {
+      const n = $('#te-name').value.trim();
+      if (!n) { alert('業務名を入力してください。'); return; }
+      if (S.tasks.some(x => x.id !== id && x.name === n)) { alert('同じ名前の業務があります。'); return; }
+      t.name = n; S.records.forEach(r => { if (r.taskId === id) r.taskName = n; });
+      save(); closeSheet(); render(); toast('保存しました');
+    };
+    $('#te-hide').onclick = () => { t.hidden = !t.hidden; ui.selected.delete(id); save(); closeSheet(); render(); toast(t.hidden ? '非表示にしました' : '表示にしました'); };
+    $('#te-del').onclick = () => {
+      if (used || isRun) { alert('この業務には記録があるため削除できません。「非表示」をご利用ください。'); return; }
+      if (!confirm(`「${t.name}」を削除しますか？`)) return;
+      S.tasks = S.tasks.filter(x => x.id !== id); ui.selected.delete(id); save(); closeSheet(); render(); toast('削除しました');
+    };
+    $('#te-cancel').onclick = closeSheet;
+  });
+}
+function exportBackup(){
+  const name = `CRC業務記録_バックアップ_${safeFileName(S.settings.name)}_${today().replace(/-/g, '')}.json`;
+  const file = new File([JSON.stringify(S, null, 1)], name, { type: 'application/json' });
+  if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file] }).catch(err => { if (!err || err.name !== 'AbortError') alert('共有できませんでした'); });
+  } else downloadFile(file);
+}
+document.getElementById('importFile').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const obj = JSON.parse(rd.result);
+      if (!obj || !Array.isArray(obj.records) || !Array.isArray(obj.tasks)) throw new Error('形式が違います');
+      if (!confirm(`バックアップ（記録${obj.records.length}件）で、今の内容（記録${S.records.length}件）を置き換えます。よろしいですか？`)) return;
+      S = normalize(obj); save(); render(); toast('復元しました');
+    } catch (err) { alert('このファイルは読み込めませんでした。CRC業務記録のバックアップファイルを選んでください。'); }
+  };
+  rd.readAsText(f);
+});
+function wipeAll(){
+  if (!confirm('すべての記録を削除します。元に戻せません。\n（業務の一覧と利用者設定は残ります）\nよろしいですか？')) return;
+  if (!confirm('本当に削除しますか？未送信の記録も消えます。')) return;
+  S.records = []; S.lastSentAt = null; save(); render(); toast('すべての記録を削除しました');
+}
+
+/* =========================================================
+   初回設定
+   ========================================================= */
+function firstRun(){
+  openSheet(`
+    <h3>はじめに</h3>
+    <div class="muted small">CRCの業務内容と時間を記録するアプリです。記録はこのiPhoneの中だけに保存され、必要なときにメールで送信します。</div>
+    <label class="f">CRC名（必須）</label><input type="text" id="fr-name" placeholder="例：山田" maxlength="30">
+    <label class="f">送信先メールアドレス（あとで設定も可）</label><input type="email" id="fr-mail" placeholder="例：crc-office@example.jp" autocapitalize="off" autocorrect="off">
+    <div class="actions"><button class="btn primary" id="fr-ok">はじめる</button></div>`, sh => {
+    sh.querySelector('#fr-ok').onclick = () => {
+      const n = sh.querySelector('#fr-name').value.trim(), m = sh.querySelector('#fr-mail').value.trim();
+      if (!n) { alert('CRC名を入力してください。'); return; }
+      if (m && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) { alert('メールアドレスの形式を確認してください。'); return; }
+      S.settings.name = n; S.settings.email = m; save(); closeSheet(); render();
+    };
+  });
+}
+
+/* =========================================================
+   画面の描画・操作
+   ========================================================= */
+function render(){
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'view-' + ui.tab));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
+  const n = running().length;
+  const tb = document.querySelector('#tabs button[data-tab=timer]');
+  let dot = tb.querySelector('.dot');
+  if (n) { if (!dot) { dot = document.createElement('span'); dot.className = 'dot'; tb.prepend(dot); } dot.textContent = n; }
+  else if (dot) dot.remove();
+  document.getElementById('hdrSub').textContent = `${S.settings.name ? S.settings.name + '　' : ''}${dateLabel(today())}`;
+  ({ timer: renderTimer, records: renderRecords, summary: renderSummary, send: renderSend, settings: renderSettings })[ui.tab]();
+}
+
+document.addEventListener('click', e => {
+  const tabBtn = e.target.closest('#tabs button');
+  if (tabBtn) { ui.tab = tabBtn.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const id = b.dataset.id;
+  switch (b.dataset.act) {
+    case 'pick':
+      if (S.records.some(r => isRunning(r) && r.taskId === id)) { toast('この業務は計測中です。止めるときは上の「終了」を押してください'); return; }
+      ui.selected.has(id) ? ui.selected.delete(id) : ui.selected.add(id); render(); break;
+    case 'start': startSelected(); break;
+    case 'stop': onStop(id); break;
+    case 'edit': openEdit(id); break;
+    case 'manual': openManual(b.dataset.date || today()); break;
+    case 'goto': ui.tab = b.dataset.tab; render(); window.scrollTo(0, 0); break;
+    case 'day': { const nd = addDays(ui.recDate, Number(b.dataset.n)); if (nd <= today()) { ui.recDate = nd; render(); } break; }
+    case 'sumP': ui.sumPeriod = b.dataset.p; render(); break;
+    case 'share': shareCSV(); break;
+    case 'copyMail': copyMail(); break;
+    case 'saveSettings': saveSettings(); break;
+    case 'tAdd': addTask(); break;
+    case 'tUp': moveTask(Number(b.dataset.i), -1); break;
+    case 'tDown': moveTask(Number(b.dataset.i), 1); break;
+    case 'tEdit': openTaskEdit(id); break;
+    case 'backup': exportBackup(); break;
+    case 'restore': document.getElementById('importFile').click(); break;
+    case 'wipe': wipeAll(); break;
+  }
+});
+
+// 経過時間の表示を毎秒更新
+setInterval(() => {
+  document.querySelectorAll('[data-start]').forEach(el => { el.textContent = fmtClock(Date.now() - Number(el.dataset.start)); });
+}, 1000);
+// 1分ごとに計測画面を更新（長時間の警告・日付の切り替わり）
+let lastDay = today();
+setInterval(() => {
+  if (today() !== lastDay) { lastDay = today(); if (!sheetOpen()) render(); return; }
+  if (ui.tab === 'timer' && !sheetOpen()) render();
+}, 60000);
+// アプリに戻ってきたとき、他の画面で変わった内容を読み込み直す
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !sheetOpen()) { S = load(); lastDay = today(); render(); }
+});
+
+render();
+if (!S.settings.name) firstRun();
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW', err));
+}
+</script>
+</body>
+</html>
